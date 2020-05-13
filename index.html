@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Network Visualization of Marvel Universe Characters</title>
+  <style> 
+
+
+  body {
+  font-family: 'Muli', sans-serif;
+  font-weight: 300;
+  padding: 0;
+  margin: 0;
+  font-size: 18px;
+  overflow: hidden;
+}
+
+h4 {
+  font-weight: 300;
+  font-size: 0.9em;
+}
+
+#summary-panel{
+  padding: 40px;
+}
+  
+
+.dg {
+  width: 245px; 
+  position: absolute; 
+  top: 0px; 
+  left: 20px;
+  color: #eee;
+  font: 11px 'Muli', sans-serif !important;
+}
+
+  .property-name{
+    width: 45% !important;
+  }
+
+.dg .c {
+    width: 55% !important;
+}
+
+.dg .c .slider-fg {
+    background: #75e2ac !important;
+}
+
+  select {
+    font: 400 11px 'Muli', sans-serif !important;
+  }
+  
+  .panel-wrap {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 30%;
+  transform: translateX(100%);
+  transition: .3s ease-in-out;
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  color: #f1f1f1;
+  overflow-x: hidden;
+  overflow-y:scroll;
+  padding: 1em;
+  border-left: 1px solid #303030;
+}
+
+.panel p {
+  font: 3.5em;
+  margin: 0;
+}
+
+.show-panel-wrap {
+  transform: translateX(0%);
+}
+
+.close-btn {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 35px;
+  height: 35px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+close-btn:focus {
+  outline: none;
+}
+
+.close-btn:hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.close-btn:hover .line:nth-child(1) {
+  transform: rotate(0) translate(-5px, 8px);
+}
+
+.close-btn:hover .line:nth-child(2) {
+  transform: rotate(0) translate(-5px, 0);
+}
+
+.close-btn .line {
+  transition: all 0.2s ease-in-out;
+  height: 1px;
+  width: 100%;
+  margin: 3px 0;
+  border-radius: 5px;
+  background: gray;
+}
+
+.close-btn .line:nth-child(1) {
+  transform: rotate(45deg) translate(1px, 10px);
+}
+
+.close-btn .line:nth-child(2) {
+  transform: rotate(-45deg) translate(-5px, -5px);
+}
+
+/* demo display */
+*,*:before, *:after {box-sizing: border-box;}
+
+p {
+  line-height: 1.4;
+  margin: 2em 0 0 0;
+}
+
+
+  .bar:hover{
+    fill: #FFA500;
+  }
+
+	.axis path,
+	.axis line {
+	  fill: none;
+	  stroke: #000;
+	  shape-rendering: crispEdges;
+	}
+
+  .tick text {
+    font: 8.5px sans-serif;
+  }
+
+  .chart-axis path,
+  .chart-axis line {
+    fill: none;
+    stroke: #e6edf4;
+    stroke-width: 0.125rem;
+  }
+
+  .chart-axis path {
+    display: none;
+  }
+
+  .chart-axis-h path,
+  .chart-axis-h line {
+    fill: none;
+    stroke: #e6edf4;
+    stroke-width: 0.125rem;
+  }
+
+  .chart-axis-h path {
+    display: none;
+  }
+
+  div.tooltip {
+    position: absolute;
+    text-align: center;
+    height: 55px;
+    padding: 3px;
+    background: #303030;
+    border: 0px;
+    border-radius: 2px;
+    pointer-events: none;
+    text-align: left;
+  }
+
+  .dg .cr {
+    border-left: 3px solid #75e2ac !important;
+  }
+
+  input[type=text] {
+    color: #75e2ac !important;
+  }
+
+  div.tooltip p {
+    display:inline-block;
+    padding: 3px;
+    font: 10px 'Muli', sans-serif;
+    color: #f1f1f1;
+  }
+
+  #density, #nodes, #edges, #degree, #clusters, #groups {
+     color: #75e2ac;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+      background-color: #ebebeb;
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+      -webkit-border-radius: 10px;
+      border-radius: 10px;
+      background: #6d6d6d; 
+  }
+
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Muli:wght@300&display=swap" rel="stylesheet">
+  <script src="//unpkg.com/dat.gui"></script>
+  <script src="//unpkg.com/3d-force-graph"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
+</head>
+
+<body>
+
+  <div id="3d-graph"></div>
+  <div class="panel-wrap" id="summary-outer-div">
+    <div class="panel" id="summary-panel"></div>
+  </div>
+
+  <script>
+    const elem = document.getElementById('3d-graph');
+    const panel = document.getElementById('summary-panel');
+    const sidePanel = document.getElementsByClassName("panel-wrap")[0];
+    let marvelData;
+
+    let Graph = ForceGraph3D()(elem)
+      .jsonUrl('marvel_final2.json')
+      .nodeAutoColorBy('group')
+      .nodeVal(node => node.degree*100)
+      .nodeLabel(node => `${node.name}`)
+      .onNodeHover(node => elem.style.cursor = node ? 'pointer' : null)
+      .linkLabel(link => `${link.source.name} > ${link.target.name}`)
+      .linkWidth(link => (link.weight/382)*2)
+      .onNodeClick(node => {
+            clickOnNode(node);
+        });
+
+
+    function clickOnNode (node){
+          let { nodes, links } = Graph.graphData();
+          const distance = 80;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+
+          Graph.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
+            node, // lookAt ({ x, y, z })
+            3000  // ms transition duration
+          );
+
+          Graph.linkColor(l => (l.source.id == node.id || l.target.id == node.id) ? l.color : 'rgba(255,255,255,0.08)');
+          Graph.nodeColor(n => {
+            let connectNodes = [];
+            for (let i=0; i<links.length; i++){
+              if (links[i].source.id == node.id) {
+                connectNodes.push(links[i].target.id)
+              }
+              if (links[i].target.id == node.id) {
+                connectNodes.push(links[i].source.id)
+              }
+            }
+            if (n == node) {
+              return 'rgba(255,0,0,0.6)'
+            }
+            else if (connectNodes.includes(n.id)){
+              return n.color
+            }
+            else{
+              return 'rgba(255,255,255,0.08)'
+            }
+          });
+
+          panel.innerHTML = `<button class="close-btn">
+                              <div class="line"></div>
+                              <div class="line"></div>
+                            </button>
+                      <h2 id="character-name"></h2>
+                     <div class="flex justify-between flex-column flex-row-ns">
+                        <div class="w-100 w-50-ns">
+                            <h4>Degree Centrality</h4>
+                            <p id="d-centrality"></p>
+                        </div>
+                        <div class="w-100 w-50-ns">
+                            <h4>Betweenness Centrality</h4>
+                            <p id="b-centrality"></p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between flex-column flex-row-ns">
+                      <div class="w-100 w-50-ns">
+                        <h4>Eigenvector Centrality</h4>
+                        <p id="e-centrality"></p>
+                      </div>
+                      <div class="w-100 w-50-ns">
+                        <h4>Clustering Coefficient</h4>
+                        <p id="cluster-coefficient"></p>
+                      </div>
+                    </div>
+                    <div class="flex justify-between flex-column flex-row-ns">
+                      <div class="w-100 w-50-ns">
+                        <h4>Community Size</h4>
+                        <p id="community-number"></p>
+                      </div>
+                      <div class="w-100 w-50-ns">
+                        <h4>Neighbors in Same Community</h4>
+                        <p id="percent-community"></p>
+                      </div>
+                    </div>
+                    <div class="mt5">
+                      <h4>Neighbors with Most Connections</h4>
+                      <div id="connections-neighbors"></div>
+                    </div>
+                    <div>
+                      <h4>Most Influential Neighbors</h4>
+                      <div id="influential-neighbors"></div>
+                    </div>
+                    <div>
+                      <h4>Ranking by Degree Centrality</h4>
+                      <div id="d-ranking"></div>
+                    </div>
+                    <div>
+                      <h4>Ranking by Betweenness Centrality</h4>
+                      <div id="b-ranking"></div>
+                    </div>
+                    <div>
+                      <h4>Ranking by Eigenvector Centrality</h4>
+                      <div id="e-ranking"></div>
+                    </div>`
+
+          if (!sidePanel.classList.contains('show-panel-wrap')){
+            sidePanel.classList.add("show-panel-wrap");
+          }
+
+          const close_btn = document.querySelector('.close-btn');
+          close_btn.addEventListener('click', closeMenu);
+
+          function closeMenu() {
+              sidePanel.classList.remove('show-panel-wrap');
+          }
+
+          document.getElementById('character-name').innerHTML = node.name;
+          document.getElementById('d-centrality').innerHTML = node.degree.toFixed(4);
+          document.getElementById('b-centrality').innerHTML = node.betweenness.toFixed(4);
+          document.getElementById('e-centrality').innerHTML = node.eigenvector.toFixed(4);
+          document.getElementById('cluster-coefficient').innerHTML = node.clustering.toFixed(4);
+          document.getElementById('community-number').innerHTML = node.no_in_group;
+          document.getElementById('percent-community').innerHTML = `${node.percent_neighbors_in_community.toFixed(2)}%`;
+
+          function textColorScale(propName, selector){
+
+          const colorRange = [ "#75e2ac", "#72deac", "#6cd4ac", "#67cbac", "#5fbdab", "#55adab", "#4fa3ab", "#499aaa", 
+                          "#4491aa", "#418caa", "#397eaa", "#3271a9", "#2b66a9", "#2257a9", "#1541a8"];
+
+          const finalList = [];
+
+          for (i=0;i<nodes.length;i++){
+            finalList.push(Number(nodes[i][propName]))
+          }
+
+          const colorScaleText = d3.scaleQuantile()
+                                .domain([d3.min(finalList), d3.max(finalList)])
+                                .range(colorRange);
+          
+          d3.select(selector).style("color", function(d){
+              return colorScaleText(node[propName]);
+            });
+            console.log(finalList);
+          }
+
+          textColorScale("degree", '#d-centrality');
+          textColorScale("betweenness", '#b-centrality');
+          textColorScale("eigenvector", '#e-centrality');
+          textColorScale("clustering", '#cluster-coefficient');
+          textColorScale("no_in_group", '#community-number');
+          textColorScale("percent_neighbors_in_community", '#percent-community');
+
+          node['neighbors_most_connections'].forEach(function(d){
+              d.name = d.name.split('/')[0];
+        });
+
+          node['most_influential_connections'].forEach(function(d){
+                d.betweenness = +d.betweenness.toFixed(4);
+                d.name = d.name.split('/')[0];
+          });
+
+          node['degree_rank'].forEach(function(d){
+                d.name = d.name.split('/')[0];
+                d.degree = +d.degree.toFixed(4);
+          });
+
+          node['bet_rank'].forEach(function(d){
+                d.name = d.name.split('/')[0];
+                d.betweenness = +d.betweenness.toFixed(4);
+          });
+
+          node['eig_rank'].forEach(function(d){
+                d.name = d.name.split('/')[0];
+                d.eigenvector = +d.eigenvector.toFixed(4);
+          });
+
+          drawBarChart("#connections-neighbors", node['neighbors_most_connections'], "edges", "name", "edges", "name", horizontal=true);
+          drawBarChart("#influential-neighbors", node['most_influential_connections'], "betweenness", "name", "betweenness", "name", horizontal=true);
+          drawBarChart("#d-ranking", node['degree_rank'], "degree", "name", "degree", "name", horizontal=true, "degree_rank", "ranking", node.name.split('/')[0]);
+          drawBarChart("#b-ranking", node['bet_rank'], "betweenness", "name", "betweenness", "name", horizontal=true, "degree_bet", "ranking", node.name.split('/')[0]);
+          drawBarChart("#e-ranking", node['eig_rank'], "eigenvector", "name", "eigenvector", "name", horizontal=true, "degree_eigen", "ranking", node.name.split('/')[0]);
+    }
+
+    Graph.onBackgroundClick(e => {
+      Graph.nodeColor(n => n.color);
+      Graph.linkColor(l => l.color);
+    });
+    const initialPos = Graph.cameraPosition();
+    //Define GUI
+    const Settings = function() {
+      this.weightThreshold = 10;
+      this.resetThreshold = function() {
+        Graph = ForceGraph3D()(elem)
+        .jsonUrl('marvel_final2.json')
+        .nodeAutoColorBy('group')
+        .nodeVal(node => node.degree*100)
+        .nodeLabel(node => `${node.name}`)
+        .onNodeHover(node => elem.style.cursor = node ? 'pointer' : null)
+        .linkLabel(link => `${link.source.name} > ${link.target.name}`)
+        .linkWidth(link => (link.weight/382)*2)
+        .onNodeClick(node => {
+              clickOnNode(node);
+          });
+
+        Graph.onBackgroundClick(e => {
+          Graph.nodeColor(n => n.color);
+          Graph.linkColor(l => l.color);
+        });
+        controllerOne.setValue(10);
+      };
+      this.zoomOut = function() {
+        Graph.cameraPosition(initialPos, 0, 3000);
+        Graph.nodeColor(n => n.color);
+        Graph.linkColor(l => l.color);
+      };
+      this.centralIndicator = "degree";
+      this.searchField = "";
+      this.summaryPanel = function() {
+          getSummary();
+          if (!sidePanel.classList.contains('show-panel-wrap')){
+            sidePanel.classList.add("show-panel-wrap");
+          }
+      };
+    };
+
+    const settings = new Settings();
+    const gui = new dat.GUI();
+
+    const controllerOne = gui.add(settings, 'weightThreshold', 10, 100);
+    controllerOne.name('Weight Threshold');
+    
+    const controllerTwo = gui.add(settings, 'resetThreshold');
+    controllerTwo.name('Reset Threshold');
+
+    const controllerThree = gui.add(settings, 'zoomOut');
+    controllerThree.name('Zoom Out');
+
+    const controllerFour = gui.add(settings, 'centralIndicator', ["degree", "betweenness", "eigenvector"]);
+    controllerFour.name('Centrality Indicator');
+
+    const controllerFive = gui.add(settings, 'searchField');
+    controllerFive.name('Search');
+
+    const controllerSix = gui.add(settings, 'summaryPanel');
+    controllerSix.name('Overview');
+
+    const searchField = document.querySelectorAll('input')[1];
+    searchField.onfocus = function() {this.value = '';}
+
+    controllerOne.onChange(updateGraph);
+    controllerFour.onChange(updateNodes);
+    searchField.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        searchNodes(this.value);
+      }
+    });
+
+    function updateGraph() {
+      let { nodes, links } = Graph.graphData();
+      links = links.filter(l => l.weight > settings.weightThreshold);
+      Graph.graphData({ nodes, links });
+    }
+
+    function updateNodes() {
+      let centrality = settings.centralIndicator;
+      Graph.nodeVal(node => node[centrality]*100);
+    }
+
+    function searchNodes(term) {
+      let { nodes, links } = Graph.graphData();
+      let selected = nodes.filter(function (d, i) {
+      return d.name.toLowerCase().search(term.toLowerCase()) !== -1;
+    });
+
+      let node = selected[0];
+      clickOnNode(node);
+    }
+
+d3.json("marvel_final2.json").then(function(data) {
+
+      console.log(data);
+      marvelData = data;
+      getSummary();
+    });
+	
+function getSummary() {
+    const div = document.getElementById('summary-panel');
+    div.innerHTML = `<button class="close-btn">
+                      <div class="line"></div>
+                      <div class="line"></div>
+                    </button>
+                     <h2>Network Overview</h2>
+                     <div class="flex justify-between flex-column flex-row-ns">
+                        <div class="w-100 w-50-ns">
+                            <h4>Graph Density</h4>
+                            <p id="density"></p>
+                        </div>
+                        <div class="w-100 w-50-ns">
+                            <h4>Number of Nodes</h4>
+                            <p id="nodes"></p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between flex-column flex-row-ns">
+                      <div class="w-100 w-50-ns">
+                        <h4>Number of Edges</h4>
+                        <p id="edges"></p>
+                      </div>
+                      <div class="w-100 w-50-ns">
+                        <h4>Average Degree</h4>
+                        <p id="degree"></p>
+                      </div>
+                    </div>
+                    <div class="flex justify-between flex-column flex-row-ns">
+                      <div class="w-100 w-50-ns">
+                        <h4>Clustering Coefficient</h4>
+                        <p id="clusters"></p>
+                      </div>
+                      <div class="w-100 w-50-ns">
+                        <h4>Communities Detected</h4>
+                        <p id="groups"></p>
+                      </div>
+                    </div>
+                    <div>
+                      <h4>Degree Distribution</h4>
+                      <div id="distribution"></div>
+                    </div>
+                    <div>
+                      <h4>Top 10 Nodes by Degree Centrality</h4>
+                      <div id="top-degree"></div>
+                    </div>
+                    <div>
+                      <h4>Top 10 Nodes by Betweenness Centrality</h4>
+                      <div id="top-betweenness"></div>
+                    </div>
+                    <div>
+                      <h4>Top 10 Nodes by Eigenvector Centrality</h4>
+                      <div id="top-eigenvector"></div>
+                    </div>`
+    document.getElementById('density').innerHTML = marvelData.summary.density.toFixed(2)
+    document.getElementById('nodes').innerHTML = marvelData.summary.num_nodes
+    document.getElementById('edges').innerHTML = marvelData.summary.num_edges
+    document.getElementById('clusters').innerHTML = marvelData.summary.avg_cluster.toFixed(2)
+    document.getElementById('degree').innerHTML = marvelData.summary.avg_degree.toFixed(2)
+    document.getElementById('groups').innerHTML = marvelData.summary.no_groups
+
+    const close_btn = document.querySelector('.close-btn');
+    close_btn.addEventListener('click', closeMenu);
+
+    function closeMenu() {
+        sidePanel.classList.remove('show-panel-wrap');
+    }
+
+    const filteredData = marvelData.summary.degree_dist.filter(function(d){
+        return d.degree <= 30
+    });
+      marvelData.summary.top_degree.forEach(function(d){
+          d.degree = +d.degree.toFixed(4);
+          d.name = d.name.split('/')[0]
+    });
+      marvelData.summary.top_betweenness.forEach(function(d){
+          d.betweenness = +d.betweenness.toFixed(4);
+          d.name = d.name.split('/')[0]
+    });
+      marvelData.summary.top_eigenvector.forEach(function(d){
+          d.eigenvector = +d.eigenvector.toFixed(4);
+          d.name = d.name.split('/')[0]
+    });
+      drawBarChart("#distribution", filteredData, "degree", "frequency");
+      drawBarChart("#top-degree", marvelData.summary.top_degree, "degree", "name", "degree", "name", horizontal=true);
+      drawBarChart("#top-betweenness", marvelData.summary.top_betweenness, "betweenness", "name", "betweenness", "name", horizontal=true);
+      drawBarChart("#top-eigenvector", marvelData.summary.top_eigenvector, "eigenvector", "name", "betweenness", "name", horizontal=true);
+}
+
+function drawBarChart(selector, data, xVar ,yVar, xName, yName, horizontal=false, zVar, zName, characterName) {
+
+    if (horizontal == false){
+
+    const colors = [ "#75e2ac", "#72deac", "#6cd4ac", "#67cbac", "#5fbdab", "#55adab", "#4fa3ab", "#499aaa", "#4491aa", "#418caa", "#397eaa", "#3271a9", "#2b66a9", "#2257a9", "#1541a8"];
+
+    const colorScale = d3.scaleQuantile()
+                    .domain([d3.min(data, function(d) {
+                      return Number(d[yVar]);
+                    }), d3.max(data, function(d) {
+                      return Number(d[yVar]);
+                    })])
+                    .range(colors);
+    
+    const margin = {top: 10, right: 50, bottom: 50, left: 0},
+    width = document.querySelector(selector).offsetWidth - margin.left - margin.right,
+    height = 300 - margin.top - margin.bottom;
+
+    const svg = d3.select(selector).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", 
+              "translate(" + margin.left + "," + margin.top + ")");
+    
+    const g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    const x = d3.scaleBand()
+      .rangeRound([0, width])
+      .padding(0.1);
+
+    const y = d3.scaleLinear()
+      .rangeRound([height, 0]);
+
+      x.domain(data.map(function (d) {
+          return d[xVar];
+        }));
+      y.domain([0, d3.max(data, function (d) {
+            return Number(d[yVar]);
+          })]);
+
+      g.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .attr('class', 'chart-axis chart-axis-x')
+      .call(d3.axisBottom(x).tickValues([]))
+
+      g.append("g")
+      .attr('class', 'chart-axis chart-axis-y')
+      .call(d3.axisLeft(y).tickValues([]));
+
+      // tooltips
+      const div = d3.select(selector).append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      g.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", function (d) {
+        return x(d[xVar]);
+      })
+      .attr("y", function (d) {
+        return y(Number(d[yVar]));
+      })
+      .attr("width", x.bandwidth())
+      .attr("height", function (d) {
+        return height - y(Number(d[yVar]));
+      })
+      .attr("fill", function(d) {
+        return colorScale(Number(d[yVar]));
+      })
+      .on("mouseover", function(d){
+        div.style('display', 'inline');
+        })
+      .on("mousemove", function(d) {
+          div.transition()
+            .duration(200)
+            .style("opacity", .9);
+          div.html(
+            `<p><b>${xVar}:</b> ${d[xVar]}</p>
+            <br>
+            <p><b>${yVar}:</b> ${d[yVar]}</p>`)     
+            .style("left", d3.mouse(this)[0] + 20 + 'px')             
+            .style("top", d3.mouse(this)[1] + (document.querySelector(selector).offsetTop) + 20 + 'px');
+          })
+      .on("mouseout", function(d){ 
+        div.style("display", "none");
+        });
+
+    } else{
+
+    const colors = [ "#75e2ac", "#72deac", "#6cd4ac", "#67cbac", "#5fbdab", "#55adab", "#4fa3ab", "#499aaa", "#4491aa", "#418caa", "#397eaa", "#3271a9", "#2b66a9", "#2257a9", "#1541a8"];
+
+    const colorScale = d3.scaleQuantile()
+                    .domain([d3.min(data, function(d) {
+                      return Number(d[xVar]);
+                    }), d3.max(data, function(d) {
+                      return Number(d[xVar]);
+                    })])
+                    .range(colors);
+
+    const margin = {top: data.length, right: 80, bottom: data.length*5, left: 50},
+    width = document.querySelector(selector).offsetWidth - margin.left - margin.right,
+    height = data.length*30 - margin.top - margin.bottom;
+
+    const svg = d3.select(selector).append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform", 
+              "translate(" + margin.left + "," + margin.top + ")");
+    
+    const g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    const y = d3.scaleBand()
+      .rangeRound([0, height])
+      .padding(0.5);
+
+    const x = d3.scaleLinear()
+      .rangeRound([0, width]);
+
+      y.domain(data.map(function (d) {
+          return d[yVar];
+        }));
+      x.domain([0, d3.max(data, function (d) {
+            return d[xVar];
+          })]);
+
+      g.append("g")
+      .attr("transform", "translate(0," + height + ")")
+      .attr('class', 'chart-axis-h chart-axis-x')
+      .call(d3.axisBottom(x).tickValues([]));
+
+      g.append("g")
+      .attr('class', 'chart-axis-h chart-axis-y')
+      .call(d3.axisLeft(y).tickSize(0));
+
+      // tooltips
+      const div = d3.select(selector).append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      g.selectAll("rect .background")
+      .data(data)
+      .enter().append("rect")
+      .classed("background", true)
+      .attr("x", 0)
+      .attr("y", function (d) {
+        return y(d[yVar]);
+      })
+      .attr('rx', (height/data.length) / 5)
+      .attr('ry',(height/data.length) / 5)
+      .attr("height", y.bandwidth())
+      .attr("width", x(d3.max(data, function (d) {
+            return Number(d[xVar]);
+      })))
+      .attr("fill", "#303030");
+      
+      if (characterName){
+         g.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", 0)
+      .attr("y", function (d) {
+        return y(d[yVar]);
+      })
+      .attr('rx', (height/data.length) / 5)
+      .attr('ry',(height/data.length) / 5)
+      .attr("height", y.bandwidth())
+      .attr("width", function (d) {
+        return x(d[xVar]);
+      })
+      .attr("fill", function(d) {
+        if (d[yVar] == characterName) {
+          return "#75e2ac"
+        }
+        else{
+          return "#3271a9"
+        }
+      })
+      .on("mouseover", function(d){
+        div.style('display', 'inline');
+        })
+      .on("mousemove", function(d) {
+          div.transition()
+            .duration(200)
+            .style("opacity", .9);
+          if (zName){
+             div.html(
+            `<p><b>${zName}:</b> ${d[zVar]}</p>
+            <br>
+            <p><b>${xName}:</b> ${d[xVar]}</p>`)     
+            .style("left", d3.mouse(this)[0] + 20 + 'px')             
+            .style("top", d3.mouse(this)[1] + (document.querySelector(selector).offsetTop) + 20 + 'px');
+          }
+          else{
+          div.html(
+            `<p><b>${yName}:</b> ${d[yVar]}</p>
+            <br>
+            <p><b>${xName}:</b> ${d[xVar]}</p>`)    
+            .style("left", d3.mouse(this)[0] + 20 + 'px')             
+            .style("top", d3.mouse(this)[1] + (document.querySelector(selector).offsetTop) + 20 + 'px');
+            }
+          })
+      .on("mouseout", function(d){ 
+        div.style("display", "none");
+        });
+      }
+      else{
+         g.selectAll(".bar")
+      .data(data)
+      .enter().append("rect")
+      .attr("class", "bar")
+      .attr("x", 0)
+      .attr("y", function (d) {
+        return y(d[yVar]);
+      })
+      .attr('rx', (height/data.length) / 5)
+      .attr('ry',(height/data.length) / 5)
+      .attr("height", y.bandwidth())
+      .attr("width", function (d) {
+        return x(d[xVar]);
+      })
+      .attr("fill", function(d) {
+        return colorScale(Number(d[xVar]));
+      })
+      .on("mouseover", function(d){
+        div.style('display', 'inline');
+        })
+      .on("mousemove", function(d) {
+          div.transition()
+            .duration(200)
+            .style("opacity", .9);
+          if (zName){
+             div.html(
+            `<p><b>${zName}:</b> ${d[zVar]}</p>
+            <br>
+            <p><b>${xName}:</b> ${d[xVar]}</p>`)     
+            .style("left", d3.mouse(this)[0] + 20 + 'px')             
+            .style("top", d3.mouse(this)[1] + (document.querySelector(selector).offsetTop) + 20 + 'px');
+          }
+          else{
+          div.html(
+            `<p><b>${yName}:</b> ${d[yVar]}</p>
+            <br>
+            <p><b>${xName}:</b> ${d[xVar]}</p>`)    
+            .style("left", d3.mouse(this)[0] + 20 + 'px')             
+            .style("top", d3.mouse(this)[1] + (document.querySelector(selector).offsetTop) + 20 + 'px');
+            }
+          })
+      .on("mouseout", function(d){ 
+        div.style("display", "none");
+        });
+      }
+    }
+}
+
+  </script>
+</body>
+</html>
